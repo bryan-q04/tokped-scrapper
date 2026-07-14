@@ -40,32 +40,30 @@ Runner on VPS:  TOKPED_CRED_URL=https://auth.example.com ──GET /cred──�
 
 ---
 
-## Part A2 — Web UI + domain + SSL (certbot)
+## Part A2 — Web UI + domain + auto-HTTPS (Caddy)
 
-A web UI (`webapp/`) lets you trigger scrapes and view/download reports from a browser.
-It runs as the `web` container (uvicorn on `127.0.0.1:8000`); host **nginx + certbot** put it
-behind `https://tokped-scrapper.virtual-app.my.id`.
+A web UI (`webapp/`) lets you trigger scrapes and view/download reports. The `web` container
+serves it internally on `:8000`; a **`caddy`** container terminates TLS and reverse-proxies to
+it, provisioning + renewing the Let's Encrypt cert **automatically** — no nginx, no certbot.
 
-1. **DNS**: add an **A record** `tokped-scrapper.virtual-app.my.id` → the VM's public IP
-   (use a Lightsail **static IP** so it doesn't change).
-2. **Firewall**: in Lightsail networking, open **ports 80 and 443**.
-3. **Token**: add `TOKPED_WEB_TOKEN=<secret>` to `~/tokped-scraper/POC/.env` so only holders of
-   the token can trigger runs. Then start/refresh the web container:
+1. **DNS**: add an **A record** `tokped-scrapper.virtual-app.my.id` → the VM's public **static** IP.
+2. **Firewall**: open **ports 80 and 443** in Lightsail networking. *(done)*
+3. **Email** (optional): change the ACME email in [`deploy/Caddyfile`](deploy/Caddyfile).
+4. **`.env`**: add `TOKPED_WEB_TOKEN=<secret>` (guards the Run button) and
+   `TOKPED_CRED_URL`/`TOKPED_CRED_TOKEN` (so scrapes get a cookie from the home auth service) to
+   `~/tokped-scraper/POC/.env`.
+5. **Bring it up** (GitHub Actions also runs this on every deploy):
    ```bash
-   cd ~/tokped-scraper && sudo docker compose -f POC/docker-compose.yml up -d web
+   cd ~/tokped-scraper && sudo docker compose -f POC/docker-compose.yml up -d
    ```
-   (GitHub Actions also runs `up -d web` on every deploy.)
-4. **nginx + certbot** (one-time, after DNS is live):
-   ```bash
-   sudo bash ~/tokped-scraper/POC/deploy/setup-web.sh   # edit EMAIL inside first
-   ```
-   This installs nginx + certbot, reverse-proxies the domain → the app, gets a Let's Encrypt
-   cert, and enables auto-renew + HTTP→HTTPS redirect.
-5. Open **https://tokped-scrapper.virtual-app.my.id**, paste the token, hit **Run scrape**, and
-   open the latest report. TEREA needs the auth service (`--show-adult` box + `TOKPED_CRED_URL`).
+   Caddy fetches the cert on the first request. Open
+   **https://tokped-scrapper.virtual-app.my.id**, paste the token, hit **Run scrape**.
 
+> If host **nginx** is running from a previous attempt, stop it so Caddy can bind 80/443:
+> `sudo systemctl disable --now nginx`.
+>
 > Security: the token guards `POST /api/run`; the report/download views are open. For stricter
-> access, put Cloudflare Access or nginx basic-auth in front of the whole site.
+> access, put Cloudflare Access in front of the whole site.
 
 ---
 

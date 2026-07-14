@@ -1,0 +1,8 @@
+{
+	# ACME account email for Let's Encrypt (cert-expiry notices). Change to a real address.
+	email admin@tokped-scrapper.virtual-app.my.id
+}
+
+tokped-scrapper.virtual-app.my.id {
+	reverse_proxy web:8000
+}

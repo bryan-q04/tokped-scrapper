@@ -65,5 +65,5 @@ jobs:
               touch POC/.env
             fi
             sudo docker compose -f POC/docker-compose.yml build
-            sudo docker compose -f POC/docker-compose.yml up -d web
-            echo "deploy: build OK; web service up on 127.0.0.1:8000"
+            sudo docker compose -f POC/docker-compose.yml up -d
+            echo "deploy: build OK; web + caddy up"
