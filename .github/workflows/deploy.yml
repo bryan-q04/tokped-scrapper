@@ -26,7 +26,21 @@ jobs:
     needs: test
     runs-on: ubuntu-latest
     steps:
-      - name: Deploy to Lightsail over SSH
+      - uses: actions/checkout@v4
+
+      # Copy the code straight from the runner (works for private repos; no git on the VM).
+      - name: Copy POC to the VM
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.LIGHTSAIL_HOST }}
+          username: ${{ secrets.LIGHTSAIL_USER }}
+          key: ${{ secrets.LIGHTSAIL_SSH_KEY }}
+          source: "POC"
+          target: "~/tokped-scraper"
+          overwrite: true
+
+      # Build the runner image. Requires only Docker on the VM (see the launch script).
+      - name: Build on the VM
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.LIGHTSAIL_HOST }}
@@ -34,7 +48,9 @@ jobs:
           key: ${{ secrets.LIGHTSAIL_SSH_KEY }}
           script: |
             set -e
-            cd /opt/tokped-scraper
-            git pull --ff-only
+            cd ~/tokped-scraper
+            if [ ! -f POC/.env ]; then
+              echo "WARNING: ~/tokped-scraper/POC/.env not found - create it (TOKPED_CRED_URL/TOKPED_CRED_TOKEN) before scraping."
+            fi
             docker compose -f POC/docker-compose.yml build
-            echo "deployed $(git rev-parse --short HEAD)"
+            echo "deploy: build OK"

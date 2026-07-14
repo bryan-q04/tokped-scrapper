@@ -26,19 +26,13 @@ systemctl enable --now docker
 # 4) Let the default user (ubuntu) run docker without sudo.
 usermod -aG docker ubuntu || true
 
-# 5) Deploy target used by the GitHub Actions workflow.
-install -d -o ubuntu -g ubuntu /opt/tokped-scraper
-
 echo "bootstrap done"
 
 # ---------------------------------------------------------------------------
-# MANUAL, once, after boot (these involve secrets/auth — keep them OUT of here):
-#   1. Add a read-only DEPLOY KEY so the VM can pull the repo:
-#        sudo -u ubuntu ssh-keygen -t ed25519 -f /home/ubuntu/.ssh/id_ed25519 -N ''
-#        # add the .pub to GitHub repo -> Settings -> Deploy keys (read-only)
-#        sudo -u ubuntu git clone git@github.com:<you>/<repo>.git /opt/tokped-scraper
-#   2. Create /opt/tokped-scraper/POC/.env :
+# That's all the VM needs — GitHub Actions copies the code to ~/tokped-scraper and builds.
+# MANUAL, once, after the first successful deploy (involves a secret, keep it OUT of here):
+#   1. Create ~/tokped-scraper/POC/.env :
 #        TOKPED_CRED_URL=https://auth.example.com
 #        TOKPED_CRED_TOKEN=<same secret as the home auth service>
-#   3. Add the daily cron (see DEPLOY.md Part A step 5).
+#   2. Add the daily cron (see DEPLOY.md Part A).
 # ---------------------------------------------------------------------------

@@ -17,28 +17,24 @@ Runner on VPS:  TOKPED_CRED_URL=https://auth.example.com ──GET /cred──�
 
 1. Create a Lightsail **Linux, 1 GB** instance in a region near Indonesia (Singapore if Jakarta
    isn't offered for Lightsail). Paste [`deploy/lightsail-launch.sh`](deploy/lightsail-launch.sh)
-   into the **"Launch script"** box — it installs Docker + git, adds a 2 GB swapfile, sets the
-   timezone, and creates `/opt/tokped-scraper`. (Optional: do it manually per the script's steps.)
-2. After boot, clone the repo (a read-only **deploy key** is easiest for a private repo) and
-   create the `.env` — see the manual steps at the bottom of the launch script:
-   ```bash
-   sudo -u ubuntu git clone <your-repo-url> /opt/tokped-scraper
-   ```
-3. Create `/opt/tokped-scraper/POC/.env` (NOT committed) pointing at the home auth service:
+   into the **"Launch script"** box — it installs Docker, adds a 2 GB swapfile, sets the
+   timezone, and lets `ubuntu` run Docker. **That's the only VM prep** — GitHub Actions copies
+   the code (`scp`) to `~/tokped-scraper` and builds it. No git/clone or deploy key on the VM.
+2. After the **first successful deploy**, create `~/tokped-scraper/POC/.env` (NOT committed),
+   pointing the runner at the home auth service:
    ```
    TOKPED_CRED_URL=https://auth.example.com
    TOKPED_CRED_TOKEN=<same secret as the home service>
    ```
-4. First build + test run:
+3. Manual test run on the VM:
    ```bash
-   cd /opt/tokped-scraper
-   docker compose -f POC/docker-compose.yml build
+   cd ~/tokped-scraper
    docker compose -f POC/docker-compose.yml run --rm runner            # anonymous products
    docker compose -f POC/docker-compose.yml run --rm runner --show-adult  # TEREA (needs auth)
    ```
-5. Schedule it with host cron (`crontab -e`), e.g. daily 03:00 WIB:
+4. Schedule it with host cron (`crontab -e`), e.g. daily 03:00 WIB:
    ```
-   0 3 * * * cd /opt/tokped-scraper && docker compose -f POC/docker-compose.yml run --rm runner >> /var/log/tokped.log 2>&1
+   0 3 * * * cd ~/tokped-scraper && docker compose -f POC/docker-compose.yml run --rm runner >> ~/tokped.log 2>&1
    ```
    Outputs land in `POC/data/` (SQLite, `export_<date>.csv`, `sellers_<date>.csv`, HTML report).
 
