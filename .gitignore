@@ -1,0 +1,27 @@
+# secrets
+.env
+POC/.env
+
+# python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# runtime data (SQLite, exports, reports, browser profile, cookies, logs)
+POC/data/
+*.db
+*.log
+
+# one-off API capture (large; may contain device ids) — keep local, not in repo
+POC/sampleresponse.txt
+sampleresponse.txt
+
+# python build/cache
+*.pyc
+*.pyo
+.pytest_cache/
+
+# os
+.DS_Store
+Thumbs.db

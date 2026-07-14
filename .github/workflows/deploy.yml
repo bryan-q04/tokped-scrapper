@@ -1,0 +1,40 @@
+name: deploy
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'POC/**'
+      - '.github/workflows/deploy.yml'
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Syntax check
+        run: python -m compileall POC/src
+      - name: Offline pipeline smoke test
+        working-directory: POC
+        run: python src/runner.py --sample --no-report
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to Lightsail over SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.LIGHTSAIL_HOST }}
+          username: ${{ secrets.LIGHTSAIL_USER }}
+          key: ${{ secrets.LIGHTSAIL_SSH_KEY }}
+          script: |
+            set -e
+            cd /opt/tokped-scraper
+            git pull --ff-only
+            docker compose -f POC/docker-compose.yml build
+            echo "deployed $(git rev-parse --short HEAD)"

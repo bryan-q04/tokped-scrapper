@@ -1,0 +1,17 @@
+[
+  {
+    "data": {
+      "pdpGetLayout": {
+        "basicInfo": {
+          "id": "1234567",
+          "shopID": "9001",
+          "txStats": {
+            "countSold": "1043",
+            "transactionSuccess": "1043",
+            "transactionReject": "12"
+          }
+        }
+      }
+    }
+  }
+]

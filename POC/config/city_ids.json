@@ -1,0 +1,7 @@
+{
+  "_comment": "fcity = comma-separated Tokopedia city IDs. Verified from the live FilterSortProductQuery 'Lokasi' filter (2026-07). Jabodetabek is a group of many city IDs.",
+  "jabodetabek": { "fcity": "144,146,150,151,167,168,171,174,175,176,177,178,179,463", "verified": true },
+  "bandung":     { "fcity": "165", "verified": true },
+  "medan":       { "fcity": "46", "verified": true },
+  "surabaya":    { "fcity": "252", "verified": true }
+}

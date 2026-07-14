@@ -1,0 +1,9 @@
+# Live scraping (optional for --sample mode, required for live runs)
+curl_cffi>=0.7.0      # browser-TLS-impersonating HTTP client (primary)
+requests>=2.31        # fallback HTTP client
+python-dotenv>=1.0    # loads .env (cookie / user-agent)
+playwright>=1.44      # automatic anti-bot cookie harvesting (--auto-cookie)
+
+# Note: --sample mode runs on the Python standard library alone.
+# For LIVE runs:  pip install -r requirements.txt
+# For --auto-cookie also run once:  python -m playwright install chromium

@@ -1,0 +1,13 @@
+# VPS runner. One-shot container — schedule it from host cron:
+#   docker compose -f POC/docker-compose.yml run --rm runner
+#   docker compose -f POC/docker-compose.yml run --rm runner --show-adult   # TEREA
+services:
+  runner:
+    build: .
+    image: tokped-runner:latest
+    env_file:
+      - .env            # TOKPED_CRED_URL + TOKPED_CRED_TOKEN (points at the home auth service)
+    volumes:
+      - ./data:/app/data        # persist SQLite + CSV exports + HTML report
+      - ./config:/app/config    # tune filters.json / city_ids.json without a rebuild
+    # command defaults to the Dockerfile CMD (--reset-today); override per run as shown above.

@@ -1,0 +1,4 @@
+{
+  "_comment": "sc = Tokopedia category id(s), comma-separated. Verified from the live 'Kategori' filter (2026-07). 578 = 'Audio, Kamera & Elektronik Lainnya' = where IQOS devices, TEREA sticks and BONDS are listed. Accessories (cases, asbak 4359, lanyard 3853), sports/sandals (62) and stationery (642) sit in OTHER categories, so restricting to 578 removes most noise server-side. Use --category iqos (default) to restrict, --category none to disable, or pass a literal sc id.",
+  "iqos": "578"
+}

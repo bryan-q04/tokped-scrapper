@@ -1,0 +1,21 @@
+{
+  "_comment": "Relevance filter for the report. A product is flagged NOISE if its name contains ANY exclude_term (case-insensitive). If require_any is non-empty, a product must ALSO contain at least one of those terms to count as relevant. Tune this file, then re-run: python src/report.py  (no rescrape needed).",
+
+  "exclude_terms": [
+    "case", "casing", "cover", "sleeve", "skin", "wrap", "sarung", "pelindung",
+    "cleaner", "friequos", "pembersih", "brush", "sikat", "cotton", "swab", "kapas",
+    "asbak", "ashtray", "adaptor", "adapter", "charger", "kabel", "cable", "holder", "stand", "dock",
+    "rak", "organizer", "tray", "kotak", "storage", "display", "box container",
+    "paperbag", "paper bag", "pouch", "dompet", "wallet",
+    "sandal", "sepatu", "shoes", "kaos", "t-shirt", "t shirt", "baju", "outdoor", "gunung", "hiking",
+    "reel", "pancing", "keramik", "lantai", "hanger", "gantungan", "gunting", "botol", "spatula",
+    "talenan", "tatakan", "sendok", "pisau", "corong", "saringan", "kran", "lem ", "tape", "hook",
+    "stoplamp", "lampu", "muffler", "headlamp", "vario", "scoopy", "spion",
+    "ringlight", "tripod", "phone holder", "pulpen", "ballpoint", "pen gel",
+    "homeware", "kids", "mpasi", "bayi", "tegek", "katana", "spray",
+    "cap ", "topi", "shell", "tube", "remover", "button", "cap ring", "sticker",
+    "film", "paperbag", "paper bag", "o-ring", "lanyard", "strap", "sarung tangan"
+  ],
+
+  "require_any": ["iqos", "iluma", "heets", "bonds", "iq0s", "icos"]
+}

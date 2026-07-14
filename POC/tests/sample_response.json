@@ -1,0 +1,78 @@
+[
+  {
+    "data": {
+      "searchProductV5": {
+        "header": { "totalData": 4, "responseCode": 0, "keywordProcess": "1", "componentID": "02.01.00.00" },
+        "data": {
+          "totalDataText": "4 barang",
+          "products": [
+            {
+              "oldID": 1234567,
+              "id": "1234567",
+              "name": "IQOS ILUMA Prime Kit Original Resmi",
+              "url": "https://www.tokopedia.com/iqos-official/iluma-prime-kit",
+              "applink": "tokopedia://product/1234567",
+              "price": { "text": "Rp1.299.000", "number": 1299000, "original": 0, "discountPercentage": 0 },
+              "shop": { "oldID": 9001, "id": "9001", "name": "IQOS Official Store", "url": "https://www.tokopedia.com/iqos-official", "city": "Jakarta Pusat", "tier": 2 },
+              "badge": { "title": "Official Store", "url": "https://images.tokopedia.net/official_store_badge.png" },
+              "labelGroups": [
+                { "position": "integrity", "title": "1rb+ terjual", "type": "textDarkGrey", "url": "" }
+              ],
+              "rating": 5.0,
+              "wishlist": false,
+              "ads": { "id": "", "tag": "" }
+            },
+            {
+              "oldID": 2234567,
+              "id": "2234567",
+              "name": "IQOS ILUMA Prime Ori Garansi Resmi Murah",
+              "url": "https://www.tokopedia.com/vapejaya/iluma-prime",
+              "applink": "tokopedia://product/2234567",
+              "price": { "text": "Rp1.150.000", "number": 1150000, "original": 0, "discountPercentage": 0 },
+              "shop": { "oldID": 9002, "id": "9002", "name": "Vape Jaya Abadi", "url": "https://www.tokopedia.com/vapejaya", "city": "Jakarta Barat", "tier": 3 },
+              "badge": { "title": "", "url": "" },
+              "labelGroups": [
+                { "position": "integrity", "title": "5rb+ terjual", "type": "textDarkGrey", "url": "" }
+              ],
+              "rating": 5.0,
+              "wishlist": false,
+              "ads": { "id": "", "tag": "" }
+            },
+            {
+              "oldID": 3234567,
+              "id": "3234567",
+              "name": "IQOS ILUMA One Original Second Like New",
+              "url": "https://www.tokopedia.com/nikcorner/iluma-one",
+              "applink": "tokopedia://product/3234567",
+              "price": { "text": "Rp899.000", "number": 899000, "original": 0, "discountPercentage": 0 },
+              "shop": { "oldID": 9003, "id": "9003", "name": "Nikotin Corner", "url": "https://www.tokopedia.com/nikcorner", "city": "Bandung", "tier": 1 },
+              "badge": { "title": "", "url": "" },
+              "labelGroups": [
+                { "position": "integrity", "title": "Terjual 250", "type": "textDarkGrey", "url": "" }
+              ],
+              "rating": 4.0,
+              "wishlist": false,
+              "ads": { "id": "", "tag": "" }
+            },
+            {
+              "oldID": 4234567,
+              "id": "4234567",
+              "name": "IQOS ILUMA i Prime Kit Bonus Aksesoris",
+              "url": "https://www.tokopedia.com/gadgetzone/iluma-i-prime",
+              "applink": "tokopedia://product/4234567",
+              "price": { "text": "Rp1.450.000", "number": 1450000, "original": 0, "discountPercentage": 0 },
+              "shop": { "oldID": 9004, "id": "9004", "name": "Gadget Zone ID", "url": "https://www.tokopedia.com/gadgetzone", "city": "Surabaya", "tier": 3 },
+              "badge": { "title": "", "url": "" },
+              "labelGroups": [
+                { "position": "integrity", "title": "750 terjual", "type": "textDarkGrey", "url": "" }
+              ],
+              "rating": 5.0,
+              "wishlist": false,
+              "ads": { "id": "", "tag": "" }
+            }
+          ]
+        }
+      }
+    }
+  }
+]

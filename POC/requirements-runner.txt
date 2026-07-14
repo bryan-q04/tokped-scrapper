@@ -1,0 +1,5 @@
+# VPS runner image deps ONLY — no Playwright/Chromium (the browser lives on the home
+# machine's auth service). Keeps the image small so the lowest-spec Lightsail is enough.
+curl_cffi>=0.7.0
+requests>=2.31
+python-dotenv>=1.0
