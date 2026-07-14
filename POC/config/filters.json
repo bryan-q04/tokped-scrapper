@@ -17,5 +17,5 @@
     "film", "paperbag", "paper bag", "o-ring", "lanyard", "strap", "sarung tangan"
   ],
 
-  "require_any": ["iqos", "iluma", "heets", "bonds", "iq0s", "icos"]
+  "require_any": ["iqos", "iluma", "heets", "bonds", "iq0s", "icos", "terea", "sentia"]
 }

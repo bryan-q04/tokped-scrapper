@@ -53,8 +53,7 @@
     </div>
     <div class="checks">
       <label><input id="exclude_official" type="checkbox"> Exclude official store</label>
-      <label><input id="show_adult" type="checkbox"> Include TEREA (age-gated, needs auth)</label>
-      <label><input id="require_cookie" type="checkbox"> Require cookie (abort if none)</label>
+      <label><input id="show_adult" type="checkbox"> Include age-restricted (show_adult)</label>
       <label><input id="reset_today" type="checkbox" checked> Reset today first</label>
     </div>
     <label style="margin-top:14px">Access token (if the server sets one)</label>
@@ -88,7 +87,6 @@ async function run(){
       cities: $('#cities').value,
       exclude_official: $('#exclude_official').checked,
       show_adult: $('#show_adult').checked,
-      require_cookie: $('#require_cookie').checked,
       reset_today: $('#reset_today').checked,
     };
     const r = await fetch('/api/run', {method:'POST',

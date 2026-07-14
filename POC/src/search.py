@@ -17,7 +17,9 @@ OPERATION = "SearchProductV5Query"
 def build_params(keyword: str, page: int, rows: int = 60,
                  fcity: str | None = None, shop_tier: str | None = None,
                  sc: str | None = None, show_adult: bool = False,
-                 ob: str = "23", user_city_id: str = "176") -> str:
+                 ob: str = "23", user_city_id: str = "176",
+                 user_id: str = "", user_district_id: str = "",
+                 user_warehouse_id: str = "0") -> str:
     start = (page - 1) * rows
     params = {
         "device": "desktop",
@@ -33,9 +35,9 @@ def build_params(keyword: str, page: int, rows: int = 60,
         "sc": sc or "",                 # category filter (Tokopedia category id)
         "scheme": "https",
         "shipping": "",
-        "show_adult": "true" if show_adult else "false",  # age-gated (TEREA) needs auth + true
+        "show_adult": "true" if show_adult else "false",  # not the age gate — user_id is (see below)
         "source": "search",
-        "srp_component_id": "02.01.00.00",
+        "srp_component_id": "04.06.00.00",   # matches the desktop normal-search surface
         "srp_page_id": "",
         "srp_page_title": "",
         "st": "product",
@@ -44,12 +46,15 @@ def build_params(keyword: str, page: int, rows: int = 60,
         "unique_id": uuid.uuid4().hex,
         "user_addressId": "",
         "user_cityId": user_city_id,
-        "user_districtId": "",
-        "user_id": "",
+        "user_districtId": user_district_id,
+        # user_id is the real differentiator: with the logged-in account id the search returns
+        # the curated result set (real TEREA); empty => generic search flooded with the
+        # "Terea Homeware" brand collision. Set TOKPED_USER_ID in .env.
+        "user_id": user_id,
         "user_lat": "",
         "user_long": "",
         "user_postCode": "",
-        "user_warehouseId": "",
+        "user_warehouseId": user_warehouse_id,
         "variants": "",
         "warehouses": "",
     }
@@ -62,10 +67,18 @@ def build_params(keyword: str, page: int, rows: int = 60,
 
 def build_payload(keyword: str, page: int, rows: int = 60,
                   fcity: str | None = None, official: bool = False,
-                  category: str | None = None, show_adult: bool = False) -> list:
+                  category: str | None = None, show_adult: bool = False,
+                  user_id: str | None = None, user_district_id: str | None = None,
+                  user_warehouse_id: str | None = None) -> list:
+    import settings  # lazy so --sample stays stdlib-only
     shop_tier = "2" if official else None
-    params = build_params(keyword, page, rows=rows, fcity=fcity,
-                          shop_tier=shop_tier, sc=category, show_adult=show_adult)
+    params = build_params(
+        keyword, page, rows=rows, fcity=fcity, shop_tier=shop_tier, sc=category,
+        show_adult=show_adult,
+        user_id=settings.get_user_id() if user_id is None else user_id,
+        user_district_id=settings.get_district_id() if user_district_id is None else user_district_id,
+        user_warehouse_id=settings.get_warehouse_id() if user_warehouse_id is None else user_warehouse_id,
+    )
     return [{
         "operationName": OPERATION,
         "variables": {"params": params},

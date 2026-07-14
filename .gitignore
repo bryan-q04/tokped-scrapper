@@ -13,9 +13,11 @@ POC/data/
 *.db
 *.log
 
-# one-off API capture (large; may contain device ids) — keep local, not in repo
+# one-off API captures (large; contain the cookie / device ids) — keep local, NOT in repo
 POC/sampleresponse.txt
 sampleresponse.txt
+sampletest.txt
+POC/sampletest.txt
 
 # python build/cache
 *.pyc

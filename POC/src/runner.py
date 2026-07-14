@@ -154,16 +154,27 @@ def run_live(args, conn):
         d = storage.delete_scrape_date(conn, scrape_date)
         log.info("reset-today: cleared %d existing rows for %s", d, scrape_date)
 
-    cookie, ua = _resolve_cookie(args)
-    # An age-restricted (TEREA) scrape is meaningless without auth, so --show-adult implies it.
-    require_cookie = args.require_cookie or args.show_adult
-    if not cookie:
-        if require_cookie:
-            log.error("!! Aborting: a cookie is required (--require-cookie / --show-adult) but none "
-                      "was available. Fix the auth service (TOKPED_CRED_URL) and retry.")
-            raise SystemExit(3)
-        log.warning("!! No cookie available. Set TOKPED_COOKIE in .env or pass --auto-cookie. "
-                    "Trying anyway; expect a block.")
+    # Identity that actually curates the result set (real TEREA, no Terea-Homeware noise) is the
+    # user_id param + Tkpd-Userid/Bd-Device-Id headers, sourced from settings/.env — NOT the
+    # session cookie. The big cookie combined with those headers even gets HTTP/2-reset, so we
+    # run cookieless whenever an identity is configured.
+    user_id = settings.get_user_id()
+    device_id = settings.get_device_id()
+    if args.no_cookie or user_id:
+        cookie, ua = "", settings.get_user_agent()
+    else:
+        cookie, ua = _resolve_cookie(args)
+
+    if user_id:
+        log.info("identity: user_id=%s device_id=%s (cookieless)",
+                 user_id, device_id or "MISSING - set TOKPED_DEVICE_ID")
+    elif args.require_cookie and not cookie:
+        log.error("!! Aborting: --require-cookie set but no cookie/identity available.")
+        raise SystemExit(3)
+    else:
+        log.warning("!! No TOKPED_USER_ID and no cookie -> anonymous search; results will be "
+                    "polluted with the Terea-Homeware brand collision. Set TOKPED_USER_ID + "
+                    "TOKPED_DEVICE_ID in .env (see check_auth.py).")
     if args.exclude_official:
         log.info("exclude-official: dropping official-store rows before storing")
 
@@ -175,6 +186,7 @@ def run_live(args, conn):
 
     cities = settings.load_city_ids()
     total = 0
+    seen = noise = 0   # for the pollution detector (identity-broke early-warning)
 
     for keyword in args.keywords:
         for city in args.cities:
@@ -220,6 +232,8 @@ def run_live(args, conn):
 
                 rows = _rows_from_products(products, keyword, city, scraped_at,
                                            scrape_date, rank_offset=(page - 1) * args.rows)
+                seen += len(rows)
+                noise += sum(1 for r in rows if not r["is_relevant"])
                 if args.exclude_official:
                     rows = [r for r in rows if not r["is_official"]]
                 if args.exact_sold:
@@ -238,6 +252,17 @@ def run_live(args, conn):
                 page += 1
                 time.sleep(args.delay + random.uniform(0, args.delay))
 
+    if seen:
+        noise_pct = 100.0 * noise / seen
+        log.info("relevance: %d/%d relevant (%.0f%% noise) across the run",
+                 seen - noise, seen, noise_pct)
+        # When the static identity works, real IQOS/TEREA searches are almost all relevant. A
+        # sudden noise spike = the Terea-Homeware collision returning => identity likely broke.
+        if user_id and seen >= 20 and noise_pct >= 70:
+            log.warning("!!!!! POLLUTION ALERT: %.0f%% of results are noise even though "
+                        "TOKPED_USER_ID is set. The static identity may have broken (banned "
+                        "account / rotated device id). Re-capture user_id + device_id from a "
+                        "browser and re-run check_auth.py to confirm.", noise_pct)
     log.info("Stored %d product observations for %s.", total, scrape_date)
     return scrape_date
 
@@ -296,7 +321,10 @@ def main():
     ap.add_argument("--show-adult", action="store_true",
                     help="request age-restricted products (TEREA); needs an authenticated cookie")
     ap.add_argument("--require-cookie", action="store_true",
-                    help="abort (exit 3) if no cookie is available instead of scraping anonymously")
+                    help="abort (exit 3) if no cookie/identity is available")
+    ap.add_argument("--no-cookie", action="store_true",
+                    help="never send the session cookie; identify via TOKPED_USER_ID + device "
+                         "headers only (the reliable path — the cookie triggers HTTP/2 resets)")
     ap.add_argument("--rows", type=int, default=60, help="products per page")
     ap.add_argument("--delay", type=float, default=4.0,
                     help="base delay (s) between requests; jitter added on top")

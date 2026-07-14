@@ -48,6 +48,35 @@ def get_user_agent() -> str:
     return os.environ.get("TOKPED_USER_AGENT", "").strip() or DEFAULT_UA
 
 
+def get_user_id() -> str:
+    """Logged-in account id sent as the search `user_id` param. This — NOT the cookie or
+    show_adult — is what makes Tokopedia return the curated logged-in result set. Empty =
+    anonymous search, which floods 'terea' with the Terea-Homeware brand collision.
+    Read it once from a browser: DevTools -> the SearchProductV5Query params -> user_id."""
+    return os.environ.get("TOKPED_USER_ID", "").strip()
+
+
+def get_district_id() -> str:
+    """`user_districtId` of the account's active address (matches the logged-in browser)."""
+    return os.environ.get("TOKPED_DISTRICT_ID", "").strip()
+
+
+def get_device_id() -> str:
+    """Device fingerprint the browser sends as `Bd-Device-Id` / `Bd-Web-Id` headers.
+    Copy it once from DevTools -> the SearchProductV5Query request headers."""
+    return os.environ.get("TOKPED_DEVICE_ID", "").strip()
+
+
+def get_x_version() -> str:
+    """`X-Version` header the web app sends (changes on Tokopedia frontend releases)."""
+    return os.environ.get("TOKPED_X_VERSION", "").strip() or "f2b5e35"
+
+
+def get_warehouse_id() -> str:
+    """`user_warehouseId`; the browser sends '0' for the default warehouse."""
+    return os.environ.get("TOKPED_WAREHOUSE_ID", "0").strip()
+
+
 def get_cred_url() -> str:
     """Base URL of the local auth service (e.g. http://home-tailnet:8765). Empty = disabled."""
     return os.environ.get("TOKPED_CRED_URL", "").strip()

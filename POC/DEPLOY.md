@@ -1,15 +1,22 @@
-# Deployment — Lightsail runner + home auth service + CI/CD
+# Deployment — Lightsail runner + CI/CD (cookieless identity)
 
-## Architecture (Variant A — current plan)
+## Architecture (identity-first — current plan)
 ```
 GitHub push ──▶ GitHub Actions ──SSH──▶ Lightsail VM ──▶ docker compose build
-                                               │  (cron) docker compose run --rm runner
+                                               │  (cron / web UI) docker compose run --rm runner
                                                ▼
-HOME machine: auth_service.py --serve  ──cloudflared──▶ https://auth.example.com  (Cloudflare)
-Runner on VPS:  TOKPED_CRED_URL=https://auth.example.com ──GET /cred──▶ authenticated cookie
+Runner on VPS:  sends user_id param + Tkpd-Userid/Bd-Device-Id headers  ──▶ curated results
 ```
 - **VPS = runner only** (curl_cffi, no browser) → the lowest/1 GB Lightsail is enough.
-- **Home = auth** (residential IP): one-time headful login, serves the cookie over a Cloudflare Tunnel.
+- **No cookie, no residential IP, no tunnel.** Tokopedia returns the real IQOS/TEREA result set
+  when the request carries the account **identity** (`TOKPED_USER_ID` + `TOKPED_DEVICE_ID`), which
+  are static — captured once from a browser, set in `.env`, and left alone.
+- The old home auth-service + Cloudflare-tunnel + cookie path is now an **optional fallback**
+  (see Part B) — only needed if Tokopedia ever forces a real session again.
+
+> **Why cookieless:** the 4.7 KB session cookie combined with the identity headers gets
+> HTTP/2-reset by Tokopedia, and — more importantly — the cookie isn't what curates the results;
+> the `user_id`/device identity is. Verify locally any time with `python src/check_auth.py`.
 
 ---
 
@@ -20,12 +27,16 @@ Runner on VPS:  TOKPED_CRED_URL=https://auth.example.com ──GET /cred──�
    into the **"Launch script"** box — it installs Docker, adds a 2 GB swapfile, sets the
    timezone, and lets `ubuntu` run Docker. **That's the only VM prep** — GitHub Actions copies
    the code (`scp`) to `~/tokped-scraper` and builds it. No git/clone or deploy key on the VM.
-2. After the **first successful deploy**, create `~/tokped-scraper/POC/.env` (NOT committed),
-   pointing the runner at the home auth service:
+2. After the **first successful deploy**, create `~/tokped-scraper/POC/.env` (NOT committed)
+   with the static account identity (capture once from a browser — DevTools > the
+   SearchProductV5Query request; see `.env.example`):
    ```
-   TOKPED_CRED_URL=https://auth.example.com
-   TOKPED_CRED_TOKEN=<same secret as the home service>
+   TOKPED_USER_ID=<account id from params user_id / header Tkpd-Userid>
+   TOKPED_DEVICE_ID=<header Bd-Device-Id>
+   TOKPED_DISTRICT_ID=<params user_districtId>
+   TOKPED_WEB_TOKEN=<secret to guard the web Run button>
    ```
+   The runner auto-detects `TOKPED_USER_ID` and scrapes **cookieless**. No auth service needed.
 3. Manual test run on the VM:
    ```bash
    cd ~/tokped-scraper
@@ -49,9 +60,8 @@ it, provisioning + renewing the Let's Encrypt cert **automatically** — no ngin
 1. **DNS**: add an **A record** `tokped-scrapper.virtual-app.my.id` → the VM's public **static** IP.
 2. **Firewall**: open **ports 80 and 443** in Lightsail networking. *(done)*
 3. **Email** (optional): change the ACME email in [`deploy/Caddyfile`](deploy/Caddyfile).
-4. **`.env`**: add `TOKPED_WEB_TOKEN=<secret>` (guards the Run button) and
-   `TOKPED_CRED_URL`/`TOKPED_CRED_TOKEN` (so scrapes get a cookie from the home auth service) to
-   `~/tokped-scraper/POC/.env`.
+4. **`.env`**: add `TOKPED_WEB_TOKEN=<secret>` (guards the Run button) plus the identity vars
+   (`TOKPED_USER_ID` / `TOKPED_DEVICE_ID` / `TOKPED_DISTRICT_ID`) to `~/tokped-scraper/POC/.env`.
 5. **Bring it up** (GitHub Actions also runs this on every deploy):
    ```bash
    cd ~/tokped-scraper && sudo docker compose -f POC/docker-compose.yml up -d
@@ -67,7 +77,11 @@ it, provisioning + renewing the Let's Encrypt cert **automatically** — no ngin
 
 ---
 
-## Part B — Home auth service (residential IP)
+## Part B — Home auth service (OPTIONAL FALLBACK — not needed for the identity path)
+
+> You only need this if Tokopedia changes their API to require a real logged-in session again.
+> While `check_auth.py` shows clean results with `TOKPED_USER_ID` set, skip this entire section
+> and run `pm2 delete tokped-auth tokped-tunnel` to retire the tunnel + service.
 
 1. On your home machine, set up the full env (this one needs Playwright):
    ```bash

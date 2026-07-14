@@ -25,20 +25,36 @@ except Exception:
     _HAS_REQUESTS = False
 
 
-def build_headers(cookie: str, user_agent: str) -> dict:
-    return {
+def build_headers(cookie: str, user_agent: str,
+                  user_id: str = None, device_id: str = None) -> dict:
+    """Mirror the browser's SearchProductV5Query request headers. The identity headers
+    Tkpd-Userid + Bd-Device-Id (NOT the cookie alone) are what make Tokopedia return the
+    curated logged-in result set; without them the search falls back to a generic set that
+    floods 'terea' with the Terea-Homeware brand collision. Defaults pulled from settings."""
+    import settings  # lazy so --sample stays stdlib-only
+    uid = settings.get_user_id() if user_id is None else user_id
+    did = settings.get_device_id() if device_id is None else device_id
+    headers = {
         "accept": "*/*",
         "accept-language": "en-US,en;q=0.9,id;q=0.8",
         "content-type": "application/json",
         "origin": "https://www.tokopedia.com",
         "referer": "https://www.tokopedia.com/",
         "user-agent": user_agent,
+        "x-dark-mode": "false",
         "x-device": "desktop-0.0",
+        "x-price-center": "true",
         "x-source": "tokopedia-lite",
-        "x-price-center": "false",
         "x-tkpd-lite-service": "zeus",
+        "x-version": settings.get_x_version(),
         "cookie": cookie or "",
     }
+    if uid:
+        headers["tkpd-userid"] = uid
+    if did:
+        headers["bd-device-id"] = did
+        headers["bd-web-id"] = did
+    return headers
 
 
 def _post(url: str, payload, headers: dict, timeout: int):
@@ -56,9 +72,10 @@ def _post(url: str, payload, headers: dict, timeout: int):
     return resp.json()
 
 
-def post_graphql(payload, cookie: str, user_agent: str, timeout: int = 30):
+def post_graphql(payload, cookie: str, user_agent: str, timeout: int = 30,
+                 user_id: str = None, device_id: str = None):
     """POST the search payload and return parsed JSON. Raises on HTTP error."""
-    return _post(GQL_URL, payload, build_headers(cookie, user_agent), timeout)
+    return _post(GQL_URL, payload, build_headers(cookie, user_agent, user_id, device_id), timeout)
 
 
 def post_pdp(payload, cookie: str, user_agent: str, referer: str, timeout: int = 30):
