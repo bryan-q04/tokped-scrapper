@@ -28,6 +28,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import cookie_harvester as ch  # noqa: E402
+import settings                # noqa: E402
 
 _LOCK = threading.Lock()
 _CRED = {"cookie": "", "user_agent": "", "harvested_at": ""}
@@ -43,8 +44,26 @@ def _set(cookie, ua):
     return dict(_CRED)
 
 
+def _manual_cookie():
+    """Re-read POC/.env and return (cookie, ua) if TOKPED_COOKIE is set manually, else (None, None).
+
+    This is the reliable path when Tokopedia's login (OTP / new-device checks) fights the
+    automated browser: log in with your normal Chrome, paste its cookie into .env, done.
+    """
+    try:
+        from dotenv import load_dotenv
+        load_dotenv(settings.POC_ROOT / ".env", override=True)  # pick up edits without restart
+    except Exception:
+        pass
+    cookie = os.environ.get("TOKPED_COOKIE", "").strip()
+    return (cookie, settings.get_user_agent()) if cookie else (None, None)
+
+
 def _refresh(headless=True):
-    """Re-harvest the cookie from the logged-in persistent profile."""
+    """Serve a manually-pasted cookie (TOKPED_COOKIE) if present; else harvest via Playwright."""
+    cookie, ua = _manual_cookie()
+    if cookie:
+        return _set(cookie, ua)
     cookie, ua = ch.harvest(headless=headless)
     return _set(cookie, ua)
 
@@ -124,6 +143,9 @@ def main():
     if args.serve:
         if not os.environ.get("TOKPED_AUTH_TOKEN"):
             print("WARNING: TOKPED_AUTH_TOKEN not set - the endpoint is UNAUTHENTICATED. Set it.")
+        mc, _ = _manual_cookie()
+        print("mode:", "manual cookie (TOKPED_COOKIE from .env)" if mc
+              else "Playwright harvest from the logged-in profile")
         _load_cached()
         try:
             _refresh()

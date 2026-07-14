@@ -1,0 +1,12 @@
+# Cloudflared config for the HOME auth service (exposes localhost:8765 as a public hostname).
+# Copy to  C:\Users\<you>\.cloudflared\config.yml  and fill in the tunnel id / path from
+# `cloudflared tunnel create tokped-auth`.
+tunnel: REPLACE_WITH_TUNNEL_ID
+credentials-file: C:\Users\ASUS\.cloudflared\REPLACE_WITH_TUNNEL_ID.json
+
+ingress:
+  # The VPS calls this hostname; Cloudflare routes it through the tunnel to the local service.
+  - hostname: tokped-auth.virtual-app.my.id
+    service: http://localhost:8765
+  # Everything else -> 404 (required catch-all).
+  - service: http_status:404
