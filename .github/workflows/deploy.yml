@@ -48,9 +48,15 @@ jobs:
           key: ${{ secrets.LIGHTSAIL_SSH_KEY }}
           script: |
             set -e
+            if ! command -v docker >/dev/null 2>&1; then
+              echo "Docker not found - installing (one time)..."
+              command -v curl >/dev/null 2>&1 || { sudo apt-get update -qq && sudo apt-get install -y -qq curl; }
+              curl -fsSL https://get.docker.com | sudo sh
+              sudo usermod -aG docker "$USER" || true
+            fi
             cd ~/tokped-scraper
             if [ ! -f POC/.env ]; then
               echo "WARNING: ~/tokped-scraper/POC/.env not found - create it (TOKPED_CRED_URL/TOKPED_CRED_TOKEN) before scraping."
             fi
-            docker compose -f POC/docker-compose.yml build
+            sudo docker compose -f POC/docker-compose.yml build
             echo "deploy: build OK"

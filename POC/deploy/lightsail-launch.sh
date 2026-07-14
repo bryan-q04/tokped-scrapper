@@ -18,9 +18,10 @@ fi
 # 2) Timezone (nice for correct scrape timestamps).
 timedatectl set-timezone Asia/Jakarta || true
 
-# 3) Docker + compose plugin + git.
+# 3) Docker engine + compose v2 plugin (official script — the Ubuntu repo lacks the plugin).
 apt-get update
-apt-get install -y --no-install-recommends docker.io docker-compose-plugin git ca-certificates
+apt-get install -y --no-install-recommends curl ca-certificates git
+if ! command -v docker >/dev/null 2>&1; then curl -fsSL https://get.docker.com | sh; fi
 systemctl enable --now docker
 
 # 4) Let the default user (ubuntu) run docker without sudo.
