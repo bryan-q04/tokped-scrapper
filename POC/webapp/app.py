@@ -119,6 +119,8 @@ async def api_run(request: Request):
         args.append("--exclude-official")
     if body.get("show_adult"):
         args.append("--show-adult")
+    if body.get("require_cookie"):
+        args.append("--require-cookie")
     if body.get("reset_today", True):
         args.append("--reset-today")
 
@@ -158,3 +160,38 @@ def download(name: str):
     if not f.exists() or f.suffix not in (".csv", ".html"):
         raise HTTPException(404, "not found")
     return FileResponse(str(f), filename=name)
+
+
+@app.post("/api/delete")
+async def api_delete(request: Request):
+    """Delete one generated report/CSV from data/ (token-guarded)."""
+    _auth(request)
+    try:
+        body = await request.json()
+    except Exception:  # noqa: BLE001
+        body = {}
+    name = str(body.get("name", ""))
+    if not name or "/" in name or "\\" in name or ".." in name:
+        raise HTTPException(400, "bad name")
+    f = DATA / name
+    if not f.exists() or f.suffix not in (".csv", ".html"):
+        raise HTTPException(404, "not found")
+    f.unlink()
+    return {"deleted": name}
+
+
+@app.post("/api/reset-db")
+async def api_reset_db(request: Request):
+    """Wipe the SQLite DB (+ its journal/wal siblings). Blocked while a run is in progress."""
+    _auth(request)
+    with _lock:
+        if _job["status"] == "running":
+            return JSONResponse({"error": "a run is in progress"}, status_code=409)
+    removed = []
+    for db in DATA.glob("*.db*"):        # tokped.db, -wal, -shm, -journal
+        try:
+            db.unlink()
+            removed.append(db.name)
+        except OSError:
+            pass
+    return {"cleared": removed}

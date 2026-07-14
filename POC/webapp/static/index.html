@@ -28,6 +28,9 @@
   pre{background:#0b1324;color:#d1d9e6;padding:12px;border-radius:8px;overflow:auto;max-height:280px;font-size:12px;white-space:pre-wrap}
   a{color:var(--pri);text-decoration:none}a:hover{text-decoration:underline}
   .links{display:flex;gap:16px;flex-wrap:wrap;margin-top:6px}
+  .file{display:inline-flex;align-items:center;gap:6px;margin:0 8px 4px 0;white-space:nowrap}
+  .del{color:var(--err);font-weight:700;text-decoration:none}
+  .danger{color:var(--err)}
 </style>
 </head>
 <body>
@@ -51,6 +54,7 @@
     <div class="checks">
       <label><input id="exclude_official" type="checkbox"> Exclude official store</label>
       <label><input id="show_adult" type="checkbox"> Include TEREA (age-gated, needs auth)</label>
+      <label><input id="require_cookie" type="checkbox"> Require cookie (abort if none)</label>
       <label><input id="reset_today" type="checkbox" checked> Reset today first</label>
     </div>
     <label style="margin-top:14px">Access token (if the server sets one)</label>
@@ -64,6 +68,7 @@
     <div class="links">
       <a href="/report/latest" target="_blank">Open latest report ↗</a>
       <a href="#" onclick="loadReports();return false">Refresh file list</a>
+      <a href="#" class="danger" onclick="resetDb();return false">Clear database</a>
     </div>
     <div id="files" class="meta" style="margin-top:8px"></div>
     <pre id="log" style="margin-top:12px;display:none"></pre>
@@ -83,6 +88,7 @@ async function run(){
       cities: $('#cities').value,
       exclude_official: $('#exclude_official').checked,
       show_adult: $('#show_adult').checked,
+      require_cookie: $('#require_cookie').checked,
       reset_today: $('#reset_today').checked,
     };
     const r = await fetch('/api/run', {method:'POST',
@@ -124,13 +130,37 @@ async function poll(){
 async function loadReports(){
   try{
     const r = await (await fetch('/api/reports')).json();
-    const link = n => `<a href="/download/${n}">${n}</a>`;
-    const parts = [];
-    if(r.reports.length) parts.push('Reports: ' + r.reports.map(link).join(', '));
-    if(r.csv.length) parts.push('Products CSV: ' + r.csv.map(link).join(', '));
-    if(r.sellers.length) parts.push('Sellers CSV: ' + r.sellers.map(link).join(', '));
+    const item = n => `<span class="file"><a href="/download/${n}">${n}</a>`
+      + `<a href="#" class="del" title="Delete" onclick="delFile('${n}');return false">✕</a></span>`;
+    const group = (label, arr) => arr.length ? (label + ': ' + arr.map(item).join('')) : '';
+    const parts = [group('Reports', r.reports), group('Products CSV', r.csv),
+                   group('Sellers CSV', r.sellers)].filter(Boolean);
     $('#files').innerHTML = parts.join('<br>') || 'No files yet.';
   }catch(e){}
+}
+
+async function delFile(name){
+  if(!confirm('Delete ' + name + '?')) return;
+  try{
+    const r = await fetch('/api/delete', {method:'POST',
+      headers:{'content-type':'application/json','x-web-token':tok()},
+      body: JSON.stringify({name})});
+    if(r.status===401){ alert('Unauthorized — check the access token.'); return; }
+    if(!r.ok){ alert('Delete failed (' + r.status + ')'); return; }
+    loadReports();
+  }catch(e){ alert('Request failed: ' + e); }
+}
+
+async function resetDb(){
+  if(!confirm('Clear the scraped database? This deletes ALL stored rows (history).')) return;
+  try{
+    const r = await fetch('/api/reset-db', {method:'POST', headers:{'x-web-token':tok()}});
+    if(r.status===401){ alert('Unauthorized — check the access token.'); return; }
+    if(r.status===409){ alert('A run is in progress — wait for it to finish.'); return; }
+    const d = await r.json();
+    alert('Database cleared: ' + (d.cleared && d.cleared.length ? d.cleared.join(', ') : 'nothing to remove'));
+    loadReports();
+  }catch(e){ alert('Request failed: ' + e); }
 }
 
 poll(); loadReports();

@@ -155,7 +155,13 @@ def run_live(args, conn):
         log.info("reset-today: cleared %d existing rows for %s", d, scrape_date)
 
     cookie, ua = _resolve_cookie(args)
+    # An age-restricted (TEREA) scrape is meaningless without auth, so --show-adult implies it.
+    require_cookie = args.require_cookie or args.show_adult
     if not cookie:
+        if require_cookie:
+            log.error("!! Aborting: a cookie is required (--require-cookie / --show-adult) but none "
+                      "was available. Fix the auth service (TOKPED_CRED_URL) and retry.")
+            raise SystemExit(3)
         log.warning("!! No cookie available. Set TOKPED_COOKIE in .env or pass --auto-cookie. "
                     "Trying anyway; expect a block.")
     if args.exclude_official:
@@ -289,6 +295,8 @@ def main():
                     help="category filter: a name in category_ids.json, a literal sc id, or 'none'")
     ap.add_argument("--show-adult", action="store_true",
                     help="request age-restricted products (TEREA); needs an authenticated cookie")
+    ap.add_argument("--require-cookie", action="store_true",
+                    help="abort (exit 3) if no cookie is available instead of scraping anonymously")
     ap.add_argument("--rows", type=int, default=60, help="products per page")
     ap.add_argument("--delay", type=float, default=4.0,
                     help="base delay (s) between requests; jitter added on top")
