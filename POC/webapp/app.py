@@ -10,6 +10,7 @@ import os
 import subprocess
 import sys
 import threading
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -32,20 +33,47 @@ def _now():
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
 
+_MAX_LOG = 12000  # chars of tail kept in memory / sent to the browser
+_TIMEOUT = 3600   # hard wall-clock cap (s); watchdog kills a hung runner
+
+
 def _run(args):
     with _lock:
         _job.update(status="running", started_at=_now(), finished_at=None,
                     returncode=None, args=args, log_tail="")
+    buf = ""
     try:
-        p = subprocess.run([sys.executable, str(SRC / "runner.py"), *args],
-                           cwd=str(POC_ROOT), capture_output=True, text=True, timeout=3600)
-        out = (p.stdout + "\n" + p.stderr)[-6000:]
+        # -u + PYTHONUNBUFFERED so child output reaches the pipe immediately (no block
+        # buffering), and merge stderr into stdout so the logging lines stream in order.
+        env = {**os.environ, "PYTHONUNBUFFERED": "1"}
+        p = subprocess.Popen(
+            [sys.executable, "-u", str(SRC / "runner.py"), *args],
+            cwd=str(POC_ROOT), env=env, stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT, text=True, bufsize=1,
+        )
+
+        deadline = time.time() + _TIMEOUT
+
+        def _watchdog():
+            while p.poll() is None:
+                if time.time() > deadline:
+                    p.kill()
+                    return
+                time.sleep(5)
+        threading.Thread(target=_watchdog, daemon=True).start()
+
+        for line in p.stdout:            # blocks per line; updates the live tail
+            buf = (buf + line)[-_MAX_LOG:]
+            with _lock:
+                _job["log_tail"] = buf
+        p.wait()
         with _lock:
             _job.update(status="done" if p.returncode == 0 else "failed",
-                        finished_at=_now(), returncode=p.returncode, log_tail=out)
+                        finished_at=_now(), returncode=p.returncode, log_tail=buf)
     except Exception as e:  # noqa: BLE001
         with _lock:
-            _job.update(status="failed", finished_at=_now(), returncode=-1, log_tail=str(e))
+            _job.update(status="failed", finished_at=_now(), returncode=-1,
+                        log_tail=(buf + "\n" + str(e))[-_MAX_LOG:])
 
 
 def _auth(request: Request):

@@ -95,12 +95,15 @@ async function run(){
   poll();
 }
 
+let _running = false;
 async function poll(){
   try{
     const s = await (await fetch('/api/status')).json();
-    const pill = $('#pill'); pill.textContent = s.status;
+    const pill = $('#pill');
+    pill.textContent = s.status === 'running' ? 'running…' : s.status;
     pill.className = 'pill s-' + s.status;
-    $('#runBtn').disabled = (s.status === 'running');
+    _running = (s.status === 'running');
+    $('#runBtn').disabled = _running;
     let m = [];
     if(s.args) m.push('args: ' + s.args.join(' '));
     if(s.started_at) m.push('started: ' + s.started_at);
@@ -108,7 +111,13 @@ async function poll(){
     if(s.returncode !== null) m.push('exit: ' + s.returncode);
     $('#meta').textContent = m.join('  ·  ');
     const log = $('#log');
-    if(s.log_tail){ log.style.display='block'; log.textContent = s.log_tail; }
+    if(s.log_tail){
+      const atBottom = log.scrollHeight - log.scrollTop - log.clientHeight < 40;
+      log.style.display='block';
+      log.textContent = s.log_tail;
+      if(_running && atBottom) log.scrollTop = log.scrollHeight;  // follow the tail
+    }
+    if(s.status === 'done') loadReports();  // surface the new files as soon as it finishes
   }catch(e){}
 }
 
@@ -125,7 +134,8 @@ async function loadReports(){
 }
 
 poll(); loadReports();
-setInterval(poll, 3000);
+// Adaptive cadence: tail closely while a run streams, back off when idle.
+(function tick(){ poll().finally(() => setTimeout(tick, _running ? 1200 : 3000)); })();
 </script>
 </body>
 </html>
