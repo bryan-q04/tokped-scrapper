@@ -11,3 +11,17 @@ services:
       - ./data:/app/data        # persist SQLite + CSV exports + HTML report
       - ./config:/app/config    # tune filters.json / city_ids.json without a rebuild
     # command defaults to the Dockerfile CMD (--reset-today); override per run as shown above.
+
+  # Long-running web UI + trigger API. nginx (host) proxies 443 -> 127.0.0.1:8000.
+  web:
+    build: .
+    image: tokped-runner:latest
+    entrypoint: ["python", "-m", "uvicorn", "webapp.app:app", "--host", "0.0.0.0", "--port", "8000"]
+    env_file:
+      - .env            # + TOKPED_WEB_TOKEN to protect POST /api/run
+    ports:
+      - "127.0.0.1:8000:8000"   # localhost only; exposed to the world via nginx + certbot
+    volumes:
+      - ./data:/app/data
+      - ./config:/app/config
+    restart: unless-stopped

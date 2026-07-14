@@ -17,10 +17,15 @@ jobs:
         with:
           python-version: '3.12'
       - name: Syntax check
-        run: python -m compileall POC/src
+        run: python -m compileall POC/src POC/webapp
       - name: Offline pipeline smoke test
         working-directory: POC
         run: python src/runner.py --sample --no-report
+      - name: Web app import check
+        working-directory: POC
+        run: |
+          pip install -r requirements-web.txt
+          python -c "import webapp.app; print('webapp import OK')"
 
   deploy:
     needs: test
@@ -59,4 +64,5 @@ jobs:
               echo "WARNING: ~/tokped-scraper/POC/.env not found - create it (TOKPED_CRED_URL/TOKPED_CRED_TOKEN) before scraping."
             fi
             sudo docker compose -f POC/docker-compose.yml build
-            echo "deploy: build OK"
+            sudo docker compose -f POC/docker-compose.yml up -d web
+            echo "deploy: build OK; web service up on 127.0.0.1:8000"

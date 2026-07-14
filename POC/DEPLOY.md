@@ -40,6 +40,35 @@ Runner on VPS:  TOKPED_CRED_URL=https://auth.example.com ──GET /cred──�
 
 ---
 
+## Part A2 — Web UI + domain + SSL (certbot)
+
+A web UI (`webapp/`) lets you trigger scrapes and view/download reports from a browser.
+It runs as the `web` container (uvicorn on `127.0.0.1:8000`); host **nginx + certbot** put it
+behind `https://tokped-scrapper.virtual-app.my.id`.
+
+1. **DNS**: add an **A record** `tokped-scrapper.virtual-app.my.id` → the VM's public IP
+   (use a Lightsail **static IP** so it doesn't change).
+2. **Firewall**: in Lightsail networking, open **ports 80 and 443**.
+3. **Token**: add `TOKPED_WEB_TOKEN=<secret>` to `~/tokped-scraper/POC/.env` so only holders of
+   the token can trigger runs. Then start/refresh the web container:
+   ```bash
+   cd ~/tokped-scraper && sudo docker compose -f POC/docker-compose.yml up -d web
+   ```
+   (GitHub Actions also runs `up -d web` on every deploy.)
+4. **nginx + certbot** (one-time, after DNS is live):
+   ```bash
+   sudo bash ~/tokped-scraper/POC/deploy/setup-web.sh   # edit EMAIL inside first
+   ```
+   This installs nginx + certbot, reverse-proxies the domain → the app, gets a Let's Encrypt
+   cert, and enables auto-renew + HTTP→HTTPS redirect.
+5. Open **https://tokped-scrapper.virtual-app.my.id**, paste the token, hit **Run scrape**, and
+   open the latest report. TEREA needs the auth service (`--show-adult` box + `TOKPED_CRED_URL`).
+
+> Security: the token guards `POST /api/run`; the report/download views are open. For stricter
+> access, put Cloudflare Access or nginx basic-auth in front of the whole site.
+
+---
+
 ## Part B — Home auth service (residential IP)
 
 1. On your home machine, set up the full env (this one needs Playwright):

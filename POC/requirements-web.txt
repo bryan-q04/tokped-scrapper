@@ -1,0 +1,3 @@
+# Web UI/API (the `web` compose service). The runner itself needs none of these.
+fastapi>=0.110
+uvicorn[standard]>=0.29

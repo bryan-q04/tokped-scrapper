@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Tokopedia IQOS Scraper</title>
+<style>
+  :root{--bd:#e3e6ea;--mut:#667085;--pri:#1d4ed8;--ok:#0d9488;--err:#dc2626;--bg:#f7f8fa}
+  *{box-sizing:border-box}
+  body{margin:0;font:14px/1.5 -apple-system,Segoe UI,Roboto,Arial,sans-serif;color:#1a1f36;background:var(--bg)}
+  header{background:#0b1324;color:#fff;padding:20px 26px}
+  header h1{margin:0;font-size:19px}
+  header p{margin:4px 0 0;color:#9aa4b2;font-size:12px}
+  main{max-width:900px;margin:0 auto;padding:22px 26px;display:grid;gap:18px}
+  .card{background:#fff;border:1px solid var(--bd);border-radius:12px;padding:18px 20px}
+  h2{font-size:15px;margin:0 0 12px}
+  label{display:block;font-size:12px;color:#344054;margin:10px 0 4px;font-weight:600}
+  input[type=text],input[type=password]{width:100%;padding:9px 11px;border:1px solid var(--bd);border-radius:8px;font-size:14px}
+  .row{display:flex;gap:18px;flex-wrap:wrap}
+  .row>div{flex:1;min-width:220px}
+  .checks{display:flex;gap:18px;margin-top:12px;flex-wrap:wrap}
+  .checks label{display:flex;align-items:center;gap:7px;font-weight:500;margin:0}
+  button{background:var(--pri);color:#fff;border:0;border-radius:8px;padding:11px 20px;font-size:14px;font-weight:600;cursor:pointer;margin-top:16px}
+  button:disabled{opacity:.5;cursor:not-allowed}
+  .pill{display:inline-block;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600;color:#fff}
+  .s-idle{background:#94a3b8}.s-running{background:#f59e0b}.s-done{background:var(--ok)}.s-failed{background:var(--err)}
+  .meta{color:var(--mut);font-size:12px}
+  pre{background:#0b1324;color:#d1d9e6;padding:12px;border-radius:8px;overflow:auto;max-height:280px;font-size:12px;white-space:pre-wrap}
+  a{color:var(--pri);text-decoration:none}a:hover{text-decoration:underline}
+  .links{display:flex;gap:16px;flex-wrap:wrap;margin-top:6px}
+</style>
+</head>
+<body>
+<header>
+  <h1>Tokopedia IQOS Scraper</h1>
+  <p>Trigger a scrape and view the latest competitor report.</p>
+</header>
+<main>
+  <div class="card">
+    <h2>Run a scrape</h2>
+    <div class="row">
+      <div>
+        <label>Keywords (comma-separated)</label>
+        <input id="keywords" type="text" value="iqos, iluma">
+      </div>
+      <div>
+        <label>Cities (comma-separated)</label>
+        <input id="cities" type="text" value="jabodetabek, bandung, medan, surabaya">
+      </div>
+    </div>
+    <div class="checks">
+      <label><input id="exclude_official" type="checkbox"> Exclude official store</label>
+      <label><input id="show_adult" type="checkbox"> Include TEREA (age-gated, needs auth)</label>
+      <label><input id="reset_today" type="checkbox" checked> Reset today first</label>
+    </div>
+    <label style="margin-top:14px">Access token (if the server sets one)</label>
+    <input id="token" type="password" placeholder="x-web-token" style="max-width:320px">
+    <br><button id="runBtn" onclick="run()">Run scrape</button>
+  </div>
+
+  <div class="card">
+    <h2>Status <span id="pill" class="pill s-idle">idle</span></h2>
+    <div id="meta" class="meta"></div>
+    <div class="links">
+      <a href="/report/latest" target="_blank">Open latest report ↗</a>
+      <a href="#" onclick="loadReports();return false">Refresh file list</a>
+    </div>
+    <div id="files" class="meta" style="margin-top:8px"></div>
+    <pre id="log" style="margin-top:12px;display:none"></pre>
+  </div>
+</main>
+<script>
+const $ = s => document.querySelector(s);
+function tok(){ return localStorage.getItem('webtok') || ''; }
+$('#token').value = tok();
+$('#token').addEventListener('input', e => localStorage.setItem('webtok', e.target.value));
+
+async function run(){
+  $('#runBtn').disabled = true;
+  try{
+    const body = {
+      keywords: $('#keywords').value,
+      cities: $('#cities').value,
+      exclude_official: $('#exclude_official').checked,
+      show_adult: $('#show_adult').checked,
+      reset_today: $('#reset_today').checked,
+    };
+    const r = await fetch('/api/run', {method:'POST',
+      headers:{'content-type':'application/json','x-web-token':tok()},
+      body: JSON.stringify(body)});
+    if(r.status===401){ alert('Unauthorized — check the access token.'); }
+    else if(r.status===409){ alert('A run is already in progress.'); }
+  }catch(e){ alert('Request failed: '+e); }
+  $('#runBtn').disabled = false;
+  poll();
+}
+
+async function poll(){
+  try{
+    const s = await (await fetch('/api/status')).json();
+    const pill = $('#pill'); pill.textContent = s.status;
+    pill.className = 'pill s-' + s.status;
+    $('#runBtn').disabled = (s.status === 'running');
+    let m = [];
+    if(s.args) m.push('args: ' + s.args.join(' '));
+    if(s.started_at) m.push('started: ' + s.started_at);
+    if(s.finished_at) m.push('finished: ' + s.finished_at);
+    if(s.returncode !== null) m.push('exit: ' + s.returncode);
+    $('#meta').textContent = m.join('  ·  ');
+    const log = $('#log');
+    if(s.log_tail){ log.style.display='block'; log.textContent = s.log_tail; }
+  }catch(e){}
+}
+
+async function loadReports(){
+  try{
+    const r = await (await fetch('/api/reports')).json();
+    const link = n => `<a href="/download/${n}">${n}</a>`;
+    const parts = [];
+    if(r.reports.length) parts.push('Reports: ' + r.reports.map(link).join(', '));
+    if(r.csv.length) parts.push('Products CSV: ' + r.csv.map(link).join(', '));
+    if(r.sellers.length) parts.push('Sellers CSV: ' + r.sellers.map(link).join(', '));
+    $('#files').innerHTML = parts.join('<br>') || 'No files yet.';
+  }catch(e){}
+}
+
+poll(); loadReports();
+setInterval(poll, 3000);
+</script>
+</body>
+</html>
