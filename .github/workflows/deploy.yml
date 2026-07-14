@@ -61,7 +61,8 @@ jobs:
             fi
             cd ~/tokped-scraper
             if [ ! -f POC/.env ]; then
-              echo "WARNING: ~/tokped-scraper/POC/.env not found - create it (TOKPED_CRED_URL/TOKPED_CRED_TOKEN) before scraping."
+              echo "POC/.env not found - creating an empty placeholder (add TOKPED_CRED_URL / TOKPED_CRED_TOKEN / TOKPED_WEB_TOKEN later)."
+              touch POC/.env
             fi
             sudo docker compose -f POC/docker-compose.yml build
             sudo docker compose -f POC/docker-compose.yml up -d web
