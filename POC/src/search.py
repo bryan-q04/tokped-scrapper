@@ -7,7 +7,7 @@ shop_tier (2 = official-store-only), ob (sort; 23 = best match / default).
 from __future__ import annotations
 
 import uuid
-from urllib.parse import urlencode
+from urllib.parse import parse_qsl, urlencode
 
 from query import SEARCH_QUERY
 
@@ -19,7 +19,7 @@ def build_params(keyword: str, page: int, rows: int = 60,
                  sc: str | None = None, show_adult: bool = False,
                  ob: str = "23", user_city_id: str = "176",
                  user_id: str = "", user_district_id: str = "",
-                 user_warehouse_id: str = "0") -> str:
+                 user_warehouse_id: str = "0", extra: dict = None) -> str:
     start = (page - 1) * rows
     params = {
         "device": "desktop",
@@ -62,6 +62,10 @@ def build_params(keyword: str, page: int, rows: int = 60,
         params["fcity"] = fcity           # location filter (comma-separated city IDs)
     if shop_tier:
         params["shop_tier"] = shop_tier   # "2" = Mall/Official Store only
+    if extra:
+        # cursor params from the previous response's header.additionalParams
+        # (next_offset_organic, search_id, has_more) — required to page the tts engine
+        params.update(extra)
     return urlencode(params)
 
 
@@ -69,12 +73,12 @@ def build_payload(keyword: str, page: int, rows: int = 60,
                   fcity: str | None = None, official: bool = False,
                   category: str | None = None, show_adult: bool = False,
                   user_id: str | None = None, user_district_id: str | None = None,
-                  user_warehouse_id: str | None = None) -> list:
+                  user_warehouse_id: str | None = None, extra: dict = None) -> list:
     import settings  # lazy so --sample stays stdlib-only
     shop_tier = "2" if official else None
     params = build_params(
         keyword, page, rows=rows, fcity=fcity, shop_tier=shop_tier, sc=category,
-        show_adult=show_adult,
+        show_adult=show_adult, extra=extra,
         user_id=settings.get_user_id() if user_id is None else user_id,
         user_district_id=settings.get_district_id() if user_district_id is None else user_district_id,
         user_warehouse_id=settings.get_warehouse_id() if user_warehouse_id is None else user_warehouse_id,
@@ -92,3 +96,13 @@ def extract_products(response_json) -> list:
         return response_json[0]["data"]["searchProductV5"]["data"]["products"] or []
     except (KeyError, IndexError, TypeError):
         return []
+
+
+def extract_additional_params(response_json) -> dict:
+    """Cursor for the NEXT page from header.additionalParams (next_offset_organic, search_id,
+    has_more, ...). These MUST be fed into the next request to page the tts engine. {} if absent."""
+    try:
+        ap = response_json[0]["data"]["searchProductV5"]["header"]["additionalParams"]
+    except (KeyError, IndexError, TypeError):
+        return {}
+    return dict(parse_qsl(ap or "", keep_blank_values=True))

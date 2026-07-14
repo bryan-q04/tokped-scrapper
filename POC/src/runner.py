@@ -21,7 +21,7 @@ import settings          # noqa: E402
 import storage           # noqa: E402
 import relevance         # noqa: E402
 from extract import parse_product   # noqa: E402
-from search import build_payload, extract_products  # noqa: E402
+from search import build_payload, extract_additional_params, extract_products  # noqa: E402
 
 log = logging.getLogger("tokped")
 
@@ -197,10 +197,11 @@ def run_live(args, conn):
             if not cfg.get("verified"):
                 log.warning("  ~ '%s' fcity is UNVERIFIED (placeholder) - confirm in Phase 0", city)
             page = 1
+            extra = None   # tts pagination cursor (from the previous page's additionalParams)
             while page <= cap:
                 payload = build_payload(keyword, page, rows=args.rows, fcity=cfg["fcity"],
                                         official=args.official_only, category=category,
-                                        show_adult=args.show_adult)
+                                        show_adult=args.show_adult, extra=extra)
                 try:
                     data = post_graphql(payload, cookie, ua)
                 except Exception as e:
@@ -225,7 +226,7 @@ def run_live(args, conn):
                 if not products:
                     raw = _dump_raw(keyword, city, page, data)
                     head = json.dumps(data, ensure_ascii=False)[:400] if data is not None else "None"
-                    log.warning("  [%s/%s p%s] 0 products (end/blocked). Raw saved: %s",
+                    log.warning("  [%s/%s p%s] 0 products (end of results or blocked). Raw: %s",
                                 keyword, city, page, raw)
                     log.debug("  raw head: %s", head)
                     break
@@ -245,7 +246,15 @@ def run_live(args, conn):
                     log.debug("    seller=%s (id=%s) | %s | Rp%s | sold=%s",
                               r["shop_name"], r["shop_id"], r["name"],
                               r["price"], r["sold_count_exact"] or r["sold_count"])
-                if len(products) < args.rows:
+                # Advance via the tts cursor: feed this response's additionalParams
+                # (next_offset_organic + search_id) into the next request; stop on has_more=false.
+                extra = extract_additional_params(data)
+                if extra:
+                    if extra.get("has_more", "").strip().lower() != "true":
+                        log.info("  [%s/%s] complete: has_more=false at p%s (%d total this page)",
+                                 keyword, city, page, len(products))
+                        break
+                elif len(products) < args.rows:   # fallback when no cursor is present
                     log.info("  [%s/%s] last page reached (%d < %d) at p%s",
                              keyword, city, len(products), args.rows, page)
                     break
